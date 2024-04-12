@@ -17,9 +17,12 @@ class ContraceptiveController extends Controller
             cli.first_name AS First_Name, 
             cli.middle_name AS Middle_Name, 
             cli.last_name AS Last_Name,
+            cli.married_name AS Married_Last_Name,
             DATE_FORMAT(FROM_DAYS(DATEDIFF(NOW(), cli.dob)), '%Y') + 0 AS Age,
             cli.sex AS Sex,
             cli.contact_no AS Contact_Number,
+            clin.name AS Clinic,
+            act.category AS Activity,
             fpc.type_of_client AS Type_Of_Client,
             p.name AS Purok,
             b.name AS Barangay,
@@ -29,6 +32,9 @@ class ContraceptiveController extends Controller
         LEFT JOIN barangay b ON cli.barangay_id = b.id
         LEFT JOIN municipality m ON cli.municipality_id = m.id
         LEFT JOIN purok p ON cli.purok_id = p.id
+        LEFT JOIN clinic clin ON cli.clinic_id = clin.id
+        LEFT JOIN activity act ON cli.activity_id = act.id
+        WHERE cli.first_name != ''
         ORDER BY fpc.id
         ");
 
@@ -37,21 +43,46 @@ class ContraceptiveController extends Controller
 
     public function fp_record() {
         $fprecord = DB::select("
-            SELECT fp.id AS FP_Record_ID, 
-                fpc.id AS FP_CLient_ID, 
-                cli.id AS Client_ID, 
-                cli.first_name as First_Name, 
-                cli.last_name as Last_Name, 
-                fp.medical_findings as Medical_Findings, 
-                fp.method as Method, 
-                cln.name as Clinic, 
-                activity.category AS Activity, 
-                fp.date as Date
-            FROM fprecord fp
-            LEFT JOIN fpclient fpc ON fp.fpclient_id = fpc.id
-            LEFT JOIN client cli ON fpc.client_id = cli.id
-            LEFT JOIN clinic cln ON fp.clinic_id = cln.id
-            LEFT JOIN activity ON fp.activity_id = activity.id
+        SELECT 
+            fp.id AS FP_Record_ID, 
+            fpc.id AS FP_Client_ID, 
+            cli.id AS Client_ID, 
+            cli.first_name AS First_Name, 
+            cli.last_name AS Last_Name, 
+            cli.married_name AS Married_Last_Name,
+            YEAR(cli.created_at) - YEAR(cli.dob) - (DATE_FORMAT(cli.created_at, '%m%d') < DATE_FORMAT(cli.dob, '%m%d')) AS Age_On_Service,
+            fp.medical_findings AS Medical_Findings, 
+            CASE WHEN fp.activity_id != 0 THEN '' ELSE cln.name END AS Clinic,
+            activity.category AS Activity, 
+            fp.date AS Date,
+            IFNULL(tables.tables, 'No Method Record') AS Methods
+        FROM fprecord fp
+        LEFT JOIN fpclient fpc ON fp.fpclient_id = fpc.id
+        LEFT JOIN client cli ON fpc.client_id = cli.id
+        LEFT JOIN clinic cln ON fp.clinic_id = cln.id
+        LEFT JOIN activity ON fp.activity_id = activity.id
+        LEFT JOIN (
+            SELECT DISTINCT
+                fprecord_id,
+                GROUP_CONCAT(table_name) AS tables
+            FROM (
+                SELECT fprecord_id, 'Condom' AS table_name FROM fprecord_supply_condom
+                UNION ALL
+                SELECT fprecord_id, 'Implant' FROM fprecord_supply_implant
+                UNION ALL
+                SELECT fprecord_id, 'Injectable' FROM fprecord_supply_injectable
+                UNION ALL
+                SELECT fprecord_id, 'Iud' FROM fprecord_supply_iud
+                UNION ALL
+                SELECT fprecord_id, 'Pill' FROM fprecord_supply_pill
+                UNION ALL
+                SELECT fprecord_id, 'Service' FROM fprecord_supply_service
+                UNION ALL
+                SELECT fprecord_id, 'Supplement' FROM fprecord_supply_supplement
+            ) AS all_fprecord_ids
+            GROUP BY fprecord_id
+        ) AS tables ON fp.id = tables.fprecord_id
+        WHERE cli.first_name != '';
         ");
 
         return response()->json($fprecord);
@@ -66,9 +97,10 @@ class ContraceptiveController extends Controller
                 cli.id AS Client_ID, 
                 cli.first_name AS First_Name, 
                 cli.last_name AS Last_Name, 
+                cli.married_name AS Married_Last_Name,
                 sij.brand AS Brand, 
                 amount AS Amount, 
-                DATE_FORMAT(fprsij.created_at, '%b %d, %Y') AS Service_Date,
+                DATE_FORMAT(fpr.date, '%b %d, %Y') AS Service_Date,
                 clinic.name AS Clinic,
                 activity.category AS Activity,  
                 CASE
@@ -97,6 +129,7 @@ class ContraceptiveController extends Controller
             LEFT JOIN reports_ca_latency rcl ON fpr.id = rcl.fprecord_id
             LEFT JOIN activity ON fpr.activity_id = activity.id
             LEFT JOIN clinic ON fpr.clinic_id = clinic.id
+            WHERE cli.first_name != ''
             ORDER BY fprsij.id, rcl.date
         ");
 
@@ -112,6 +145,7 @@ class ContraceptiveController extends Controller
                 cli.id AS Client_ID, 
                 cli.first_name AS First_Name, 
                 cli.last_name AS Last_Name, 
+                cli.married_name AS Married_Last_Name,
                 sim.brand AS Brand, 
                 arm AS Arm, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date,  
@@ -142,6 +176,7 @@ class ContraceptiveController extends Controller
             LEFT JOIN reports_ca_latency rcl ON fpr.id = rcl.fprecord_id
             LEFT JOIN clinic ON fpr.clinic_id = clinic.id
             LEFT JOIN activity ON fpr.activity_id = activity.id
+            WHERE cli.first_name != ''
             ORDER BY  fprsim.id, rcl.date
         ");
 
@@ -157,6 +192,7 @@ class ContraceptiveController extends Controller
                 cli.id AS Client_ID, 
                 cli.first_name AS First_Name, 
                 cli.last_name AS Last_Name, 
+                cli.married_name AS Married_Last_Name,
                 su.brand AS Brand, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date, 
                 clinic.name AS Clinic,
@@ -186,6 +222,7 @@ class ContraceptiveController extends Controller
             LEFT JOIN reports_ca_latency rcl ON fpr.id = rcl.fprecord_id
             LEFT JOIN clinic ON fpr.clinic_id = clinic.id
             LEFT JOIN activity ON fpr.activity_id = activity.id
+            WHERE cli.first_name != ''
             ORDER BY  fprsu.id, rcl.date
         ");
 
@@ -201,6 +238,7 @@ class ContraceptiveController extends Controller
                 cli.id AS Client_ID, 
                 cli.first_name AS First_Name, 
                 cli.last_name AS Last_Name, 
+                cli.married_name AS Married_Last_Name,
                 sp.brand AS Brand, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date,
                 activity.category AS Activity,
@@ -212,6 +250,7 @@ class ContraceptiveController extends Controller
             LEFT JOIN client cli ON fpc.client_id = cli.id
             LEFT JOIN activity ON fpr.activity_id = activity.id
             LEFT JOIN clinic ON fpr.clinic_id = clinic.id
+            WHERE cli.first_name != ''
             ORDER BY  fprsp.id
         ");
     
@@ -227,6 +266,7 @@ class ContraceptiveController extends Controller
                 cli.id AS Client_ID, 
                 cli.first_name AS First_Name, 
                 cli.last_name AS Last_Name, 
+                cli.married_name AS Married_Last_Name,
                 sc.brand AS Brand, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date
             FROM fprecord_supply_condom fprsc
@@ -234,6 +274,7 @@ class ContraceptiveController extends Controller
             LEFT JOIN fprecord fpr ON fpr.id = fprsc.fprecord_id
             LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
             LEFT JOIN client cli ON fpc.client_id = cli.id
+            WHERE cli.first_name != ''
             ORDER BY  fprsc.id
         ");
 
@@ -243,20 +284,22 @@ class ContraceptiveController extends Controller
     public function supplement_record() {
         $supplement = DB::select("
             SELECT 
-                fprsc.id AS Supply_Record_ID, 
+                fprss.id AS Supply_Record_ID, 
                 fpr.id AS FP_Record_ID, 
                 fpc.id AS FP_Client_ID, 
                 cli.id AS Client_ID, 
                 cli.first_name AS First_Name, 
                 cli.last_name AS Last_Name, 
-                sc.brand AS Brand, 
+                cli.married_name AS Married_Last_Name,
+                ss.brand AS Brand, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date
-            FROM fprecord_supply_condom fprsc
-            LEFT JOIN supply_condom sc ON fprsc.supply_condom_id = sc.id
-            LEFT JOIN fprecord fpr ON fpr.id = fprsc.fprecord_id
+            FROM fprecord_supply_supplement fprss
+            LEFT JOIN supply_supplement ss ON fprss.supply_supplement_id = ss.id
+            LEFT JOIN fprecord fpr ON fpr.id = fprss.fprecord_id
             LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
             LEFT JOIN client cli ON fpc.client_id = cli.id
-            ORDER BY  fprsc.id
+            WHERE cli.first_name != ''
+            ORDER BY  fprss.id
         ");
 
         return response()->json($supplement);
@@ -265,20 +308,22 @@ class ContraceptiveController extends Controller
     public function services_record() {
         $services = DB::select("
             SELECT 
-                fprsc.id AS Supply_Record_ID, 
+                fprss.id AS Supply_Record_ID, 
                 fpr.id AS FP_Record_ID, 
                 fpc.id AS FP_Client_ID, 
                 cli.id AS Client_ID, 
                 cli.first_name AS First_Name, 
                 cli.last_name AS Last_Name, 
-                sc.brand AS Brand, 
+                cli.married_name AS Married_Last_Name,
+                ss.name AS Service_Type, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date
-            FROM fprecord_supply_condom fprsc
-            LEFT JOIN supply_condom sc ON fprsc.supply_condom_id = sc.id
-            LEFT JOIN fprecord fpr ON fpr.id = fprsc.fprecord_id
+            FROM fprecord_supply_service fprss
+            LEFT JOIN supply_service ss ON fprss.supply_service_id = ss.id
+            LEFT JOIN fprecord fpr ON fpr.id = fprss.fprecord_id
             LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
             LEFT JOIN client cli ON fpc.client_id = cli.id
-            ORDER BY  fprsc.id
+            WHERE cli.first_name != ''
+            ORDER BY  fprss.id
         ");
 
         return response()->json($services);
