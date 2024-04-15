@@ -16,5 +16,4 @@ Route::get('/pill-record', [ContraceptiveController::class, 'pill_record']);
 Route::get('/condom-record', [ContraceptiveController::class, 'condom_record']);
 Route::get('/supplement-record', [ContraceptiveController::class, 'supplement_record']);
 Route::get('/services-record', [ContraceptiveController::class, 'services_record']);
-
-
+Route::get('/prenatal-record', [ContraceptiveController::class, 'prenatal_record']);

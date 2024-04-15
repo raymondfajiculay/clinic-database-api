@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ContraceptiveController extends Controller
@@ -327,6 +326,27 @@ class ContraceptiveController extends Controller
         ");
 
         return response()->json($services);
+    }
+
+    public function prenatal_record() {
+        $prenatal = DB::select("
+            SELECT 
+                pr.id AS Prenatal_Record_ID, 
+                pc.id AS Prenatal_Client_ID,
+                c.id AS Client_ID, 
+                c.first_name AS First_Name, 
+                c.last_name AS Last_Name,
+                c.married_name AS Married_Last_Name,
+                YEAR(c.created_at) - YEAR(c.dob) - (DATE_FORMAT(c.created_at, '%m%d') < DATE_FORMAT(c.dob, '%m%d')) AS Age_On_Service,
+                cln.name AS Clinic,
+                pr.date AS Date
+            FROM prenatalrecord pr
+            LEFT JOIN prenatalclient pc ON pr.prenatalclient_id = pc.id
+            LEFT JOIN client c ON pc.client_id = c.id
+            LEFT JOIN clinic cln ON pr.clinic_id = cln.id        
+        ");
+
+        return response()->json($prenatal);
     }
 
     // public function implant_record() {
