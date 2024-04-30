@@ -90,46 +90,49 @@ class ContraceptiveController extends Controller
     public function injectable_record() {
         $injectable = DB::select("
             SELECT 
-                fprsij.id AS Supply_Record_ID, 
-                fpr.id AS FP_Record_ID, 
-                fpc.id AS FP_Client_ID, 
-                cli.id AS Client_ID, 
-                cli.first_name AS First_Name, 
-                cli.last_name AS Last_Name, 
-                cli.married_name AS Married_Last_Name,
-                sij.brand AS Brand, 
-                amount AS Amount, 
-                DATE_FORMAT(fpr.date, '%b %d, %Y') AS Service_Date,
-                clinic.name AS Clinic,
-                activity.category AS Activity,  
-                CASE
-                    WHEN (
-                        SELECT COUNT(*)
-                        FROM reports_ca_latency r
-                        WHERE r.fprecord_id = fpr.id AND r.date < rcl.date
-                    ) + 1 = 1 THEN 'Actual'
-                    ELSE 'Latent'
-                END AS Name,
-                CASE
-                    WHEN (
-                        SELECT COUNT(*)
-                        FROM reports_ca_latency r
-                        WHERE r.fprecord_id = fpr.id AND r.date < rcl.date
-                    ) + 1 = 1 THEN 'D'
-                    ELSE 'DL'
-                END AS Code,
-                DATE_FORMAT(rcl.date , '%b %d, %Y') AS Latent
-            FROM fprecord_supply_injectable fprsij
-            LEFT JOIN supply_injectable sij ON fprsij.supply_injectable_id = sij.id
-            LEFT JOIN fprecord fpr ON fpr.id = fprsij.fprecord_id
-            LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
-            LEFT JOIN client cli ON fpc.client_id = cli.id
-            LEFT JOIN followup fup ON fpr.id = fup.fprecord_id
-            LEFT JOIN reports_ca_latency rcl ON fpr.id = rcl.fprecord_id
-            LEFT JOIN activity ON fpr.activity_id = activity.id
-            LEFT JOIN clinic ON fpr.clinic_id = clinic.id
-            WHERE cli.first_name != ''
-            ORDER BY fprsij.id, rcl.date
+            fprsij.id AS Supply_Record_ID, 
+            fpr.id AS FP_Record_ID, 
+            fpc.id AS FP_Client_ID, 
+            cli.id AS Client_ID, 
+            cli.first_name AS First_Name, 
+            cli.last_name AS Last_Name, 
+            cli.married_name AS Married_Last_Name,
+            sij.brand AS Brand, 
+            amount AS Amount, 
+            DATE_FORMAT(fpr.date, '%b %d, %Y') AS Service_Date,
+            CASE
+                WHEN fpr.activity_id = 3829 OR fpr.activity_id = 0 THEN clinic.name
+                ELSE ''
+            END AS Clinic,
+            activity.category AS Activity,
+            CASE
+                WHEN (
+                    SELECT COUNT(*)
+                    FROM reports_ca_latency r
+                    WHERE r.fprecord_id = fpr.id AND r.date < rcl.date
+                ) + 1 = 1 THEN 'Actual'
+                ELSE 'Latent'
+            END AS Name,
+            CASE
+                WHEN (
+                    SELECT COUNT(*)
+                    FROM reports_ca_latency r
+                    WHERE r.fprecord_id = fpr.id AND r.date < rcl.date
+                ) + 1 = 1 THEN 'D'
+                ELSE 'DL'
+            END AS Code,
+            DATE_FORMAT(rcl.date , '%b %d, %Y') AS Latent
+        FROM fprecord_supply_injectable fprsij
+        LEFT JOIN supply_injectable sij ON fprsij.supply_injectable_id = sij.id
+        LEFT JOIN fprecord fpr ON fpr.id = fprsij.fprecord_id
+        LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
+        LEFT JOIN client cli ON fpc.client_id = cli.id
+        LEFT JOIN followup fup ON fpr.id = fup.fprecord_id
+        LEFT JOIN reports_ca_latency rcl ON fpr.id = rcl.fprecord_id
+        LEFT JOIN activity ON fpr.activity_id = activity.id
+        LEFT JOIN clinic ON fpr.clinic_id = clinic.id
+        WHERE cli.first_name != ''
+        ORDER BY fprsij.id, rcl.date;
         ");
 
         return response()->json($injectable);
@@ -148,7 +151,10 @@ class ContraceptiveController extends Controller
                 sim.brand AS Brand, 
                 arm AS Arm, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date,  
-                clinic.name AS Clinic,
+                CASE
+                    WHEN fpr.activity_id = 3829 OR fpr.activity_id = 0 THEN clinic.name
+                    ELSE ''
+                END AS Clinic,
                 activity.category AS Activity,
                 CASE
                     WHEN (
@@ -209,8 +215,8 @@ class ContraceptiveController extends Controller
                         SELECT COUNT(*)
                         FROM reports_ca_latency r
                         WHERE r.fprecord_id = fpr.id AND r.date <= rcl.date
-                    ) = 1 THEN 'D'
-                    ELSE 'DL'
+                    ) = 1 THEN 'U'
+                    ELSE 'UL'
                 END AS Code,
                 DATE_FORMAT(rcl.date , '%b %d, %Y') AS Latent
             FROM fprecord_supply_iud fprsu
@@ -240,8 +246,11 @@ class ContraceptiveController extends Controller
                 cli.married_name AS Married_Last_Name,
                 sp.brand AS Brand, 
                 DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date,
-                activity.category AS Activity,
-                clinic.name AS Clinic
+                CASE
+                    WHEN fpr.activity_id = 3829 OR fpr.activity_id = 0 THEN clinic.name
+                    ELSE ''
+                END AS Clinic,
+                activity.category AS Activity
             FROM fprecord_supply_pill fprsp
             LEFT JOIN supply_pill sp ON fprsp.supply_pill_id = sp.id
             LEFT JOIN fprecord fpr ON fpr.id = fprsp.fprecord_id
@@ -267,10 +276,17 @@ class ContraceptiveController extends Controller
                 cli.last_name AS Last_Name, 
                 cli.married_name AS Married_Last_Name,
                 sc.brand AS Brand, 
-                DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date
+                DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date,
+                CASE
+                    WHEN fpr.activity_id = 3829 OR fpr.activity_id = 0 THEN clinic.name
+                    ELSE ''
+                END AS Clinic,
+                activity.category AS Activity
             FROM fprecord_supply_condom fprsc
             LEFT JOIN supply_condom sc ON fprsc.supply_condom_id = sc.id
             LEFT JOIN fprecord fpr ON fpr.id = fprsc.fprecord_id
+            LEFT JOIN activity ON fpr.activity_id = activity.id
+            LEFT JOIN clinic ON fpr.clinic_id = clinic.id
             LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
             LEFT JOIN client cli ON fpc.client_id = cli.id
             WHERE cli.first_name != ''
@@ -291,10 +307,17 @@ class ContraceptiveController extends Controller
                 cli.last_name AS Last_Name, 
                 cli.married_name AS Married_Last_Name,
                 ss.brand AS Brand, 
-                DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date
+                DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date,
+                CASE
+                    WHEN fpr.activity_id = 3829 OR fpr.activity_id = 0 THEN clinic.name
+                    ELSE ''
+                END AS Clinic,
+                activity.category AS Activity
             FROM fprecord_supply_supplement fprss
             LEFT JOIN supply_supplement ss ON fprss.supply_supplement_id = ss.id
             LEFT JOIN fprecord fpr ON fpr.id = fprss.fprecord_id
+            LEFT JOIN activity ON fpr.activity_id = activity.id
+            LEFT JOIN clinic ON fpr.clinic_id = clinic.id
             LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
             LEFT JOIN client cli ON fpc.client_id = cli.id
             WHERE cli.first_name != ''
@@ -315,10 +338,17 @@ class ContraceptiveController extends Controller
                 cli.last_name AS Last_Name, 
                 cli.married_name AS Married_Last_Name,
                 ss.name AS Service_Type, 
-                DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date
+                DATE_FORMAT(fpr.created_at, '%b %d, %Y') AS Service_Date,
+                CASE
+                    WHEN fpr.activity_id = 3829 OR fpr.activity_id = 0 THEN clinic.name
+                    ELSE ''
+                END AS Clinic,
+                activity.category AS Activity
             FROM fprecord_supply_service fprss
             LEFT JOIN supply_service ss ON fprss.supply_service_id = ss.id
             LEFT JOIN fprecord fpr ON fpr.id = fprss.fprecord_id
+            LEFT JOIN activity ON fpr.activity_id = activity.id
+            LEFT JOIN clinic ON fpr.clinic_id = clinic.id
             LEFT JOIN fpclient fpc ON fpc.id = fpr.fpclient_id
             LEFT JOIN client cli ON fpc.client_id = cli.id
             WHERE cli.first_name != ''
@@ -339,8 +369,9 @@ class ContraceptiveController extends Controller
                 c.married_name AS Married_Last_Name,
                 YEAR(c.created_at) - YEAR(c.dob) - (DATE_FORMAT(c.created_at, '%m%d') < DATE_FORMAT(c.dob, '%m%d')) AS Age_On_Service,
                 cln.name AS Clinic,
-                pr.date AS Date
+                prc.date AS Date
             FROM prenatalrecord pr
+            LEFT JOIN prenatalcare prc ON pr.id = prc.prenatalrecord_id
             LEFT JOIN prenatalclient pc ON pr.prenatalclient_id = pc.id
             LEFT JOIN client c ON pc.client_id = c.id
             LEFT JOIN clinic cln ON pr.clinic_id = cln.id        
@@ -348,11 +379,4 @@ class ContraceptiveController extends Controller
 
         return response()->json($prenatal);
     }
-
-    // public function implant_record() {
-    //     $implant = DB::select("
-    //     ");
-
-    //     return response()->json($implant);
-    // }
 }
