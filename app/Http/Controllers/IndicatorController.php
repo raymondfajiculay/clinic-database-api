@@ -20,7 +20,7 @@ class IndicatorController extends Controller
         // Start with the base query
         $sql = "
             SELECT 
-                COUNT(*) AS Total_User
+                COUNT(*) AS Total
             FROM 
                 fpclient AS fpc
             LEFT JOIN 
@@ -151,6 +151,52 @@ class IndicatorController extends Controller
         $result = DB::select($query); // Exclude null values to avoid errors
     
         // Return the result as a JSON response
+        return response()->json($result);
+    }
+
+    public function screened_for_hiv() {
+        $query = "
+            SELECT  COUNT(DISTINCT hivclient.id) as Total
+            FROM hivclient
+            WHERE YEAR(hivclient.created_at) - YEAR(hivclient.dob) - (DATE_FORMAT(hivclient.created_at, '%m%d') < DATE_FORMAT(hivclient.dob, '%m%d')) >= 24
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+
+    public function couple_years_protected() {
+        $query = "
+            SELECT COUNT(*) AS Total
+            FROM `reports_ca_latency`
+                JOIN `fprecord` ON `fprecord`.`id` = `reports_ca_latency`.`fprecord_id`
+                JOIN `fpclient` ON `fpclient`.`id` = `fprecord`.`fpclient_id`
+                JOIN `client` ON `client`.`id` = `fpclient`.`client_id`
+                JOIN `activity` ON `activity`.`id` = `fprecord`.`activity_id`
+            WHERE `client`.`deleted_at` IS NULL
+                AND `fpclient`.`deleted_at` IS NULL
+                AND `fprecord`.`deleted_at` IS NULL
+                AND (`client`.`id` >0)
+                AND `reports_ca_latency`.`actual` >0
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+
+    public function modern_contraceptive_user() {
+        $query = "
+            SELECT COUNT(DISTINCT c.id) as Total
+            FROM fpclient fpc
+                JOIN client c ON fpc.client_id = c.id
+            WHERE
+                c.sex = 'female';
+        ";
+
+        $result = DB::select($query);
+
         return response()->json($result);
     }
 }

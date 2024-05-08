@@ -24,7 +24,10 @@ Route::middleware([ApiKeyMiddleware::class])->group(function () {
 
     // Indicators
     Route::get('/contraceptive-users', [IndicatorController::class, 'contraceptive_users']);
-    Route::get('/contraceptive_referrals', [IndicatorController::class, 'contraceptive_referrals']);
-    Route::get('/barangay_accessing_services', [IndicatorController::class, 'barangay_accessing_services']);
+    Route::get('/contraceptive-referrals', [IndicatorController::class, 'contraceptive_referrals']);
+    Route::get('/barangay-accessing-services', [IndicatorController::class, 'barangay_accessing_services']);
+    Route::get('/screened-for-hiv', [IndicatorController::class, 'screened_for_hiv']);
+    Route::get('/couple-years-protected', [IndicatorController::class, 'couple_years_protected']);
+    Route::get('/modern-contraceptive-user', [IndicatorController::class, 'modern_contraceptive_user']);
 });
 
