@@ -73,7 +73,7 @@ class IndicatorController extends Controller
         // Return the result as a JSON response
         return response()->json($contraceptive_users);
     }
-
+    
     public function contraceptive_referrals() { 
         // Start with the base query
         $sql = "
@@ -153,7 +153,7 @@ class IndicatorController extends Controller
         // Return the result as a JSON response
         return response()->json($result);
     }
-
+    
     public function screened_for_hiv() {
         $query = "
             SELECT  COUNT(DISTINCT hivclient.id) as Total
@@ -165,8 +165,8 @@ class IndicatorController extends Controller
 
         return response()->json($result);
     }
-
-    public function couple_years_protected() {
+    
+     public function couple_years_protected() {
         $query = "
             SELECT COUNT(*) AS Total
             FROM `reports_ca_latency`
@@ -185,7 +185,28 @@ class IndicatorController extends Controller
 
         return response()->json($result);
     }
+    
+     public function couple_years_protected_youth() {
+        $query = "
+            SELECT COUNT(*) AS Total
+            FROM `reports_ca_latency`
+                JOIN `fprecord` ON `fprecord`.`id` = `reports_ca_latency`.`fprecord_id`
+                JOIN `fpclient` ON `fpclient`.`id` = `fprecord`.`fpclient_id`
+                JOIN `client` ON `client`.`id` = `fpclient`.`client_id`
+                JOIN `activity` ON `activity`.`id` = `fprecord`.`activity_id`
+            WHERE `client`.`deleted_at` IS NULL
+                AND `fpclient`.`deleted_at` IS NULL
+                AND `fprecord`.`deleted_at` IS NULL
+                AND (`client`.`id` >0)
+                AND `reports_ca_latency`.`actual` >0
+                AND YEAR(client.created_at) - YEAR(client.dob) - (DATE_FORMAT(client.created_at, '%m%d') < DATE_FORMAT(client.dob, '%m%d')) >= 24
+        ";
 
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
     public function modern_contraceptive_user() {
         $query = "
             SELECT COUNT(DISTINCT c.id) as Total
@@ -199,4 +220,119 @@ class IndicatorController extends Controller
 
         return response()->json($result);
     }
+    
+    public function hiv_screening() {
+        $query = "
+           SELECT COUNT(DISTINCT hivrecord.hivclient_id) as Total
+            FROM hivrecord;
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    public function hiv_screening_reactive() {
+        $query = "
+            SELECT COUNT(DISTINCT hivrecord.hivclient_id) as Total
+            FROM hivrecord
+            WHERE result = 'Reactive';
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    public function pregnant_client() {
+        $query = "
+            SELECT COUNT(DISTINCT prenatalrecord.prenatalclient_id) as Total
+            FROM prenatalrecord
+            WHERE outcome = 'Pregnant'
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    public function prenatal_checkup() {
+        $query = "
+            SELECT COUNT(DISTINCT prenatalclient.id) as Total
+            FROM prenatalcare
+            LEFT JOIN prenatalrecord ON prenatalrecord.id = prenatalcare.prenatalrecord_id
+            LEFT JOIN prenatalclient ON prenatalclient.id = prenatalrecord.prenatalclient_id
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+        
+    public function community_pregnant_client() {
+        $query = "
+            SELECT COUNT(DISTINCT prenatalrecord.prenatalclient_id) as Total
+            FROM prenatalrecord
+            WHERE prenatalrecord.activity_id != 0 AND prenatalrecord.outcome = 'Pregnant'
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    public function new_users() {
+        $query = "
+           SELECT COUNT(DISTINCT fpclient.client_id) as Total
+            FROM fpclient
+            WHERE type_of_client = 'New Acceptor'
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    public function hiv_referral() {
+        $query = "
+            SELECT COUNT(DISTINCT hivrecord.hivclient_id) as Total
+            FROM hivrecord
+            WHERE client_origin = 'Referral'
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    public function implant_records() {
+         $query = "
+            SELECT COUNT(DISTINCT client.id) as Total
+            FROM fprecord_supply_implant
+            LEFT JOIN fprecord ON fprecord_supply_implant.fprecord_id = fprecord.id
+            LEFT JOIN fpclient ON fprecord.fpclient_id = fpclient.id
+            LEFT JOIN client ON fpclient.client_id = client.id
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    public function women_provided_services() {
+         $query = "
+            SELECT COUNT(DISTINCT client.id) as Total
+            FROM fprecord_supply_service
+            LEFT JOIN fprecord ON fprecord_supply_service.fprecord_id = fprecord.id
+            LEFT JOIN fpclient ON fprecord.fpclient_id = fpclient.id
+            LEFT JOIN client ON fpclient.client_id = client.id
+            WHERE client.sex = 'female'
+        ";
+
+        $result = DB::select($query);
+
+        return response()->json($result);
+    }
+    
+    
 }
